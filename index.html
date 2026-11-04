@@ -66,6 +66,19 @@
   #help h2 { margin: 0 0 6px; color: var(--red); letter-spacing: 4px; }
   #help ul { padding-left: 18px; margin: 8px 0; }
   #help.hidden { display: none; }
+
+  @media (max-width: 700px) {
+    #top { font-size: 12px; gap: 4px 10px; padding: 6px 8px; }
+    #top .title, .res small { display: none; }
+    .btn { font-size: 12px; padding: 3px 7px; }
+    #info { top: auto !important; bottom: 78px; left: 8px; right: 8px; width: auto; max-height: 26vh; overflow: auto;
+      font-size: 12px; padding: 8px 10px; }
+    #info h3 { font-size: 13px; }
+    #log { left: 8px; right: 8px; width: auto; }
+    .msg { font-size: 12px; padding: 5px 8px; }
+    .tool { min-width: 64px; padding: 5px 6px; }
+    .tool .n { font-size: 13px; }
+  }
 </style>
 </head>
 <body>
@@ -110,7 +123,8 @@
       <li>백성 30명이면 <b>서당</b>, 서당이 있고 백성 60명이면 <b>기와집</b>이 열립니다.</li>
     </ul>
     <b>조작</b>: 아래에서 건물을 고르고 땅을 클릭(길·성곽·논은 드래그). 빈 곳을 드래그하면 화면 이동, 휠·핀치로 확대.
-    오른쪽 클릭이나 Esc로 선택 해제. 방향키/WASD로도 이동해요.
+    오른쪽 클릭이나 Esc로 선택 해제. 방향키/WASD로도 이동해요.<br>
+    <b>폰</b>: 탭으로 짓고, 도구를 한 번 더 누르면 해제. 두 손가락으로 이동·확대해요.
     <div style="text-align:center;margin-top:14px"><button class="btn" id="start-btn" style="font-size:15px;padding:6px 20px">시작하기</button></div>
   </div>
 </div>
@@ -188,6 +202,8 @@ function newGame(seed = Date.now()) {
   map[gy][gx].b = { type: "gwana" };
   // 관아 앞 길
   for (let x = gx - 2; x <= gx + 2; x++) map[gy + 1][x].b = { type: "road" };
+  // 처음 백성이 살 초가집 두 채
+  for (const x of [gx - 2, gx - 1]) { map[gy + 2][x].t = "grass"; map[gy + 2][x].b = { type: "house" }; }
 
   G = {
     seed, map, day: 0, season: 0, year: 1,
@@ -433,6 +449,14 @@ function resize() {
 }
 window.addEventListener("resize", resize);
 resize();
+const isTouch = matchMedia("(pointer: coarse)").matches;
+const narrow = () => window.innerWidth <= 700;
+function layout() {
+  const h = document.getElementById("top").offsetHeight + 8;
+  document.getElementById("log").style.top = h + "px";
+  document.getElementById("info").style.top = h + "px";
+}
+window.addEventListener("resize", layout);
 
 // 타일 (x,y)의 위쪽 꼭짓점 화면 좌표
 function toScreen(x, y) {
@@ -959,7 +983,7 @@ function updateInfo() {
     if (d.workers) html += `<div class="row"><span>일꾼</span><b>${d.workers}명</b></div>`;
     if (!isUnlocked(tool)) html += `<div class="hint" style="color:var(--red)">🔒 ${lockReason(tool)}</div>`;
     if (hover) { const err = placeError(tool, hover.x, hover.y); if (err) html += `<div class="hint" style="color:var(--red)">${err}</div>`; }
-    html += `<div class="hint">${d.drag ? "드래그해서 여러 칸에 한 번에 지을 수 있어요. " : ""}오른쪽 클릭·Esc로 선택 해제</div>`;
+    html += `<div class="hint">${d.drag ? "드래그해서 여러 칸에 한 번에 지을 수 있어요. " : ""}${isTouch ? "도구를 한 번 더 누르면 선택 해제, 두 손가락으로 화면 이동" : "오른쪽 클릭·Esc로 선택 해제"}</div>`;
   } else if (selected) {
     const t = tile(selected.x, selected.y);
     const b = t.b;
@@ -976,6 +1000,8 @@ function updateInfo() {
     } else {
       html = `<h3>${{ grass: "빈 땅", forest: "숲", water: "강" }[t.t]}</h3><div class="hint">(${selected.x}, ${selected.y})</div>`;
     }
+  } else if (narrow()) {
+    el.classList.add("hidden"); return;
   } else {
     html = `<h3>고을 형편</h3>
       <div class="row"><span>일손</span><b>${Math.round(S.emp * 100)}% (자리 ${S.jobs})</b></div>
@@ -1028,6 +1054,7 @@ $("new-btn").onclick = () => {
 };
 
 buildToolbar();
+layout();
 const resumed = load();
 if (!resumed) newGame();
 $("tax").value = G.tax;
